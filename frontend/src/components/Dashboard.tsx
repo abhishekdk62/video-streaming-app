@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { VideoPlayer } from './VideoPlayer';
 import './Dashboard.css';
 
-const BACKEND_URL = 'http://localhost:4000';
+const BACKEND_URL = import.meta.env.VITE_API_URL;
 
 const STREAMS = Array.from({ length: 6 }, (_, i) => ({
   id: i + 1,
