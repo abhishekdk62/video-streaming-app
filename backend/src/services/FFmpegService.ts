@@ -16,10 +16,18 @@ export class FFmpegService {
       logger.info(`Created directory: ${streamDir}`);
     }
 
+    // Check if input is RTSP or local file
+    const isRTSP = config.rtspUrl.startsWith('rtsp://');
+    const inputPath = isRTSP ? config.rtspUrl : path.join(process.cwd(), config.rtspUrl);
+
     const args = [
-      '-rtsp_transport', 'tcp',
-      '-i', config.rtspUrl,
-      '-c:v', 'copy',
+      '-re',                    // Real-time playback
+      '-stream_loop', '-1',     // Loop infinitely
+      ...(isRTSP ? ['-rtsp_transport', 'tcp'] : []),
+      '-i', inputPath,
+      '-c:v', 'libx264',
+      '-preset', 'ultrafast',
+      '-tune', 'zerolatency',
       '-c:a', 'aac',
       '-b:a', '128k',
       '-f', 'hls',
@@ -49,7 +57,16 @@ export class FFmpegService {
 
     ffmpegProcess.stderr?.on('data', (data) => {
       const message = data.toString();
-      if (message.includes('Opening') || message.includes('muxer')) {
+      
+      // Log all FFmpeg output so we can see what's happening
+      console.log(`[FFmpeg Stream ${config.id}] ${message}`);
+      
+      // Check for various indicators that stream is running
+      if (message.includes('Opening') || 
+          message.includes('muxer') || 
+          message.includes('Output #0') ||
+          message.includes('Stream mapping') ||
+          message.includes('frame=')) {
         processInfo.status = 'running';
         logger.info(`Stream ${config.id} is now running`);
       }
