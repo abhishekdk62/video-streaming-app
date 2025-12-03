@@ -1,9 +1,8 @@
-import React from 'react'
+import { Dashboard } from './components/Dashboard';
+import './App.css';
 
-const App = () => {
-  return (
-    <div>App</div>
-  )
+function App() {
+  return <Dashboard />;
 }
 
-export default App
+export default App;
