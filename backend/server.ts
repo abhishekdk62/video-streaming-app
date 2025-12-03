@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { config } from './src/config';
 import { corsMiddleware } from './src/middleware/cors.middleware';
 import { streamRoutes, streamManager } from './src/routes/stream.routes';
@@ -12,8 +13,10 @@ app.use(corsMiddleware);
 app.use(express.json());
 
 // Static file serving for HLS streams with proper headers
-const streamsPath = path.join(process.cwd(), 'public', 'streams');
-console.log('Serving streams from:', streamsPath); // This will show the exact path
+// Use __dirname to get correct path in production (when compiled to dist/server.js)
+const streamsPath = path.join(__dirname, '..', 'public', 'streams');
+console.log('Serving streams from:', streamsPath);
+console.log('Streams path exists:', fs.existsSync(streamsPath));
 
 app.use('/streams', express.static(streamsPath, {
   setHeaders: (res, filePath) => {
@@ -40,6 +43,20 @@ app.get('/', (req, res) => {
       status: '/api/streams/status',
       restart: '/api/streams/restart/:id'
     }
+  });
+});
+
+// Debug endpoint to check file paths
+app.get('/debug/files', (req, res) => {
+  const stream1Path = path.join(streamsPath, 'stream1');
+  
+  res.json({
+    dirname: __dirname,
+    cwd: process.cwd(),
+    streamsPath: streamsPath,
+    streamsExists: fs.existsSync(streamsPath),
+    stream1Exists: fs.existsSync(stream1Path),
+    stream1Files: fs.existsSync(stream1Path) ? fs.readdirSync(stream1Path) : []
   });
 });
 
