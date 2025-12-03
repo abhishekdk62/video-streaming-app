@@ -45,7 +45,7 @@ export const useHLS = ({ src, autoPlay = false, onReady }: UseHLSProps) => {
         }
       });
 
-      hls.on(Hls.Events.ERROR, (event, data) => {
+      hls.on(Hls.Events.ERROR, (_event, data) => {
         if (data.fatal) {
           console.error('Fatal HLS error:', data);
           switch (data.type) {
