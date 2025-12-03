@@ -12,20 +12,32 @@ const app = express();
 app.use(corsMiddleware);
 app.use(express.json());
 
-// Static file serving for HLS streams with proper headers
-// Use __dirname to get correct path in production (when compiled to dist/server.js)
-const streamsPath = path.join(__dirname, '..', 'public', 'streams');
-console.log('Serving streams from:', streamsPath);
-console.log('Streams path exists:', fs.existsSync(streamsPath));
+// Determine streams path based on environment
+const isProduction = process.env.NODE_ENV === 'production';
+const streamsPath = isProduction 
+  ? '/tmp/streams'
+  : path.join(__dirname, '..', 'public', 'streams');
 
+console.log('Environment:', process.env.NODE_ENV);
+console.log('Serving streams from:', streamsPath);
+
+// Create streams directory if it doesn't exist
+if (!fs.existsSync(streamsPath)) {
+  fs.mkdirSync(streamsPath, { recursive: true });
+  console.log('Created streams directory:', streamsPath);
+}
+
+// Static file serving for HLS streams with proper headers
 app.use('/streams', express.static(streamsPath, {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.m3u8')) {
       res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
       res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cache-Control', 'no-cache');
     } else if (filePath.endsWith('.ts')) {
       res.setHeader('Content-Type', 'video/MP2T');
       res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Cache-Control', 'no-cache');
     }
   }
 }));
@@ -51,6 +63,7 @@ app.get('/debug/files', (req, res) => {
   const stream1Path = path.join(streamsPath, 'stream1');
   
   res.json({
+    environment: process.env.NODE_ENV,
     dirname: __dirname,
     cwd: process.cwd(),
     streamsPath: streamsPath,
@@ -79,6 +92,7 @@ app.listen(PORT, () => {
   logger.info(`🚀 Server running on http://localhost:${PORT}`);
   logger.info(`📺 Streaming ${config.streamCount} channels`);
   logger.info(`📡 RTSP Source: ${config.rtspUrl}`);
+  logger.info(`📁 Streams directory: ${streamsPath}`);
 });
 
 export default app;
