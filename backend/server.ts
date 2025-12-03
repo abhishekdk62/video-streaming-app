@@ -4,6 +4,7 @@ import { config } from './src/config';
 import { corsMiddleware } from './src/middleware/cors.middleware';
 import { streamRoutes, streamManager } from './src/routes/stream.routes';
 import {logger} from './src/utils/logger'
+
 const app = express();
 
 // Middleware
@@ -11,12 +12,17 @@ app.use(corsMiddleware);
 app.use(express.json());
 
 // Static file serving for HLS streams with proper headers
-app.use('/streams', express.static(path.join(__dirname, '../public/streams'), {
+const streamsPath = path.join(process.cwd(), 'public', 'streams');
+console.log('Serving streams from:', streamsPath); // This will show the exact path
+
+app.use('/streams', express.static(streamsPath, {
   setHeaders: (res, filePath) => {
     if (filePath.endsWith('.m3u8')) {
       res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+      res.setHeader('Access-Control-Allow-Origin', '*');
     } else if (filePath.endsWith('.ts')) {
       res.setHeader('Content-Type', 'video/MP2T');
+      res.setHeader('Access-Control-Allow-Origin', '*');
     }
   }
 }));
