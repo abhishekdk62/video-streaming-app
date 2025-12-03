@@ -1,1 +1,6 @@
+node_modules/
+dist/
+public/streams/
 .env
+*.log
+.DS_Store
