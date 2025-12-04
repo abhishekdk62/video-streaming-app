@@ -16,7 +16,8 @@ app.use(express.json());
 const isProduction = process.env.NODE_ENV === 'production';
 const streamsPath = isProduction 
   ? '/tmp/streams'
-  : path.join(__dirname, '..', 'public', 'streams');
+  : path.join(__dirname, 'public', 'streams');  // Remove the '..'
+
 
 console.log('Environment:', process.env.NODE_ENV);
 console.log('Serving streams from:', streamsPath);
@@ -41,11 +42,7 @@ app.use('/streams', express.static(streamsPath, {
     }
   }
 }));
-
-// Routes
 app.use('/api/streams', streamRoutes);
-
-// Root health check
 app.get('/', (req, res) => {
   res.json({
     message: 'Video Streaming Backend',
@@ -57,8 +54,6 @@ app.get('/', (req, res) => {
     }
   });
 });
-
-// Debug endpoint to check file paths
 app.get('/debug/files', (req, res) => {
   const stream1Path = path.join(streamsPath, 'stream1');
   

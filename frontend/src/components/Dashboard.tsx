@@ -14,8 +14,6 @@ export const Dashboard: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [streamStatuses, setStreamStatuses] = useState<any[]>([]);
   const playersRef = useRef<HTMLVideoElement[]>([]);
-
-  // Fetch stream statuses
   useEffect(() => {
     const fetchStatus = async () => {
       try {
@@ -47,10 +45,7 @@ export const Dashboard: React.FC = () => {
     }
 
     try {
-      // Pause all first
       playersRef.current.forEach(video => video.pause());
-
-      // Seek all to same position (0)
       await Promise.all(
         playersRef.current.map(video => {
           video.currentTime = 0;
@@ -60,7 +55,6 @@ export const Dashboard: React.FC = () => {
         })
       );
 
-      // Play all simultaneously
       await Promise.all(
         playersRef.current.map(video => video.play())
       );
