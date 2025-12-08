@@ -13,8 +13,6 @@ export const useHLS = ({ src, autoPlay = false, onReady }: UseHLSProps) => {
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
-
-    // modern browsers via hls.js
     if (Hls.isSupported()) {
       const hls = new Hls();
       hls.loadSource(src);
@@ -27,10 +25,7 @@ export const useHLS = ({ src, autoPlay = false, onReady }: UseHLSProps) => {
         onReady?.(video);
       };
 
-      // main ready event
       hls.on(Hls.Events.MANIFEST_PARSED, handleReady);
-
-      // fallback in case MANIFEST_PARSED doesn’t fire but metadata loads
       const metaHandler = () => {
         onReady?.(video);
       };
@@ -48,7 +43,6 @@ export const useHLS = ({ src, autoPlay = false, onReady }: UseHLSProps) => {
       };
     }
 
-    // Safari / native HLS
     if (video.canPlayType("application/vnd.apple.mpegurl")) {
       video.src = src;
       const handler = () => {
