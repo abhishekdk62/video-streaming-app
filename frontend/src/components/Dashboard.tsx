@@ -1,127 +1,101 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { VideoPlayer } from './VideoPlayer';
-import './Dashboard.css';
+import { useState, useRef, useCallback } from "react";
+import { VideoPlayer } from "./VideoPlayer";
 
 const BACKEND_URL = import.meta.env.VITE_API_URL;
-
 const STREAMS = Array.from({ length: 6 }, (_, i) => ({
   id: i + 1,
-  url: `${BACKEND_URL}/streams/stream${i + 1}/output.m3u8`
+  url: `${BACKEND_URL}/demo/index.m3u8`,
 }));
 
 export const Dashboard: React.FC = () => {
-  const [readyPlayers, setReadyPlayers] = useState<HTMLVideoElement[]>([]);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [streamStatuses, setStreamStatuses] = useState<any[]>([]);
   const playersRef = useRef<HTMLVideoElement[]>([]);
-  useEffect(() => {
-    const fetchStatus = async () => {
-      try {
-        const response = await fetch(`${BACKEND_URL}/api/streams/status`);
-        const data = await response.json();
-        if (data.success) {
-          setStreamStatuses(data.data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch stream status:', error);
-      }
-    };
-
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 5000);
-    return () => clearInterval(interval);
-  }, []);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [, forceRerender] = useState(0); // used only so readyCount updates in UI
 
   const handlePlayerReady = useCallback((video: HTMLVideoElement) => {
-    playersRef.current.push(video);
-    setReadyPlayers(prev => [...prev, video]);
-    console.log(`Player ready. Total: ${playersRef.current.length}/6`);
+    if (!playersRef.current.includes(video)) {
+      playersRef.current.push(video);
+      console.log(
+        "[Dashboard] player ready, total:",
+        playersRef.current.length
+      );
+      // trigger re-render so readyCount and button state update
+      forceRerender((x) => x + 1);
+    }
   }, []);
 
   const syncAndPlayAll = useCallback(async () => {
-    if (playersRef.current.length !== 6) {
-      alert('Wait for all streams to load!');
+    const players = playersRef.current;
+    console.log("[Dashboard] syncAndPlayAll, ready:", players.length);
+
+    if (players.length !== 6) {
+      alert("Wait for all streams to load!");
       return;
     }
 
     try {
-      playersRef.current.forEach(video => video.pause());
-      await Promise.all(
-        playersRef.current.map(video => {
-          video.currentTime = 0;
-          return new Promise(resolve => {
-            video.onseeked = () => resolve(true);
-          });
-        })
-      );
+      players.forEach((v) => v.pause());
 
       await Promise.all(
-        playersRef.current.map(video => video.play())
+        players.map(
+          (v) =>
+            new Promise<void>((resolve) => {
+              const handler = () => {
+                v.removeEventListener("seeked", handler);
+                resolve();
+              };
+              v.addEventListener("seeked", handler);
+              v.currentTime = 0;
+            })
+        )
       );
 
+      await Promise.all(players.map((v) => v.play()));
       setIsPlaying(true);
-      console.log('All streams synchronized and playing!');
-
-      // Continuous sync check
-      const syncInterval = setInterval(() => {
-        const times = playersRef.current.map(v => v.currentTime);
-        const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
-        const maxDiff = Math.max(...times) - Math.min(...times);
-
-        if (maxDiff > 0.5) {
-          console.log('Drift detected, re-syncing...');
-          playersRef.current.forEach(video => {
-            if (Math.abs(video.currentTime - avgTime) > 0.3) {
-              video.currentTime = avgTime;
-            }
-          });
-        }
-      }, 2000);
-
-      return () => clearInterval(syncInterval);
-    } catch (error) {
-      console.error('Error syncing streams:', error);
+    } catch (err) {
+      console.error("Error syncing streams:", err);
     }
   }, []);
 
   const pauseAll = useCallback(() => {
-    playersRef.current.forEach(video => video.pause());
+    playersRef.current.forEach((v) => v.pause());
     setIsPlaying(false);
   }, []);
 
-  const runningStreams = streamStatuses.filter(s => s.status === 'running').length;
+  const readyCount = playersRef.current.length;
 
   return (
-    <div className="dashboard">
-      <header className="dashboard-header">
-        <div className="header-content">
-          <h1>📺 Video Streaming Dashboard</h1>
-          <div className="stream-info">
-            <span className="status-badge">
-              {runningStreams}/6 Streams Running
-            </span>
-          </div>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-4 md:p-6 lg:p-8">
+      <header className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-4 md:p-6 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900">
+            📺 Video Streaming Dashboard
+          </h1>
+          <span className="inline-flex items-center px-4 py-2 bg-emerald-500 text-white text-sm md:text-base font-semibold rounded-full shadow-md">
+            {readyCount}/6 Streams Ready
+          </span>
         </div>
-        <div className="controls">
-          <button 
-            onClick={syncAndPlayAll} 
-            disabled={readyPlayers.length !== 6 || isPlaying}
-            className="btn btn-primary"
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={syncAndPlayAll}
+            disabled={readyCount !== 6 || isPlaying}
+            className="flex-1 sm:flex-none px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-md hover:shadow-xl hover:-translate-y-0.5 transform transition-all duration-300 text-sm md:text-base"
           >
-            ▶ Sync & Play All ({readyPlayers.length}/6 Ready)
+            ▶ Sync & Play All ({readyCount}/6)
           </button>
-          <button 
-            onClick={pauseAll} 
+          <button
+            onClick={pauseAll}
             disabled={!isPlaying}
-            className="btn btn-secondary"
+            className="flex-1 sm:flex-none px-6 py-3 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg shadow-md hover:shadow-xl hover:-translate-y-0.5 transform transition-all duration-300 text-sm md:text-base"
           >
             ⏸ Pause All
           </button>
         </div>
       </header>
 
-      <main className="dashboard-grid">
-        {STREAMS.map(stream => (
+      <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 lg:gap-6 mb-6">
+        {STREAMS.map((stream) => (
           <VideoPlayer
             key={stream.id}
             streamId={stream.id}
@@ -131,7 +105,7 @@ export const Dashboard: React.FC = () => {
         ))}
       </main>
 
-      <footer className="dashboard-footer">
+      <footer className="text-center text-white text-sm md:text-base opacity-90">
         <p>Synchronized HLS Streaming • RTSP to HLS Conversion</p>
       </footer>
     </div>

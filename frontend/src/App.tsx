@@ -1,8 +1,11 @@
 import { Dashboard } from './components/Dashboard';
-import './App.css';
 
 function App() {
-  return <Dashboard />;
+  return (
+    <div className="min-h-screen w-full overflow-x-hidden antialiased">
+      <Dashboard />
+    </div>
+  );
 }
 
 export default App;
